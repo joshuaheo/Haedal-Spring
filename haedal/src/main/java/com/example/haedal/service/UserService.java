@@ -4,7 +4,9 @@ import com.example.haedal.domain.User;
 import com.example.haedal.dto.UserDetailResponseDto;
 import com.example.haedal.dto.UserSimpleResponseDto;
 import com.example.haedal.dto.UserUpdateRequestDto;
+import com.example.haedal.repository.PostRepository;
 import com.example.haedal.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,28 +15,33 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Slf4j
 public class UserService {
     private final UserRepository userRepository;
-
+    private final ImageService imageService;
+    private final PostRepository postRepository;
     @Autowired
-    public UserService(UserRepository userRepository){
+    public UserService(UserRepository userRepository, ImageService imageService, PostRepository postRepository){
         this.userRepository=userRepository;
+        this.imageService = imageService;
+        this.postRepository=postRepository;
     }
     public UserSimpleResponseDto saveUser(User newUser) {
         // 중복 회원 검증
         if (userRepository.existsByUsername(newUser.getUsername())) {
             throw new IllegalStateException("중복되는 username입니다.");
         }
-
         userRepository.save(newUser);
         return convertUserToSimpleDto(newUser, newUser);
     }
         public UserSimpleResponseDto convertUserToSimpleDto(User currentUser, User targetUser) {
-            return new UserSimpleResponseDto(
+            String imageUrl = targetUser.getImageUrl();
+            String imageData = imageService.encodeImageToBase64(System.getProperty("user.dir") + "/haedal/src/main/resources/static/" + imageUrl);
+        return new UserSimpleResponseDto(
                     targetUser.getId(),
                     targetUser.getUsername(),
                     targetUser.getName(),
-                    null,
+                    imageData,
                     false
             );
     }
@@ -81,15 +88,18 @@ public class UserService {
     }
 
     public UserDetailResponseDto convertUserToDetailDto(User currentUser, User targetUser) {
+        String imageUrl = targetUser.getImageUrl();
+        String imageData = imageService.encodeImageToBase64(System.getProperty("user.dir") + "/haedal/src/main/resources/static/" + imageUrl);
+
         return new UserDetailResponseDto(
                 targetUser.getId(),
                 targetUser.getUsername(),
                 targetUser.getName(),
-                null,
+                imageData,
                 false,
                 targetUser.getBio(),
                 targetUser.getJoinedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm")),
-                0L,
+                postRepository.countByUser(targetUser),
                 0L,
                 0L
         );
