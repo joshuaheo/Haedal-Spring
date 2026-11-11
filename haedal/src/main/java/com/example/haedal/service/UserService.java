@@ -4,6 +4,7 @@ import com.example.haedal.domain.User;
 import com.example.haedal.dto.UserDetailResponseDto;
 import com.example.haedal.dto.UserSimpleResponseDto;
 import com.example.haedal.dto.UserUpdateRequestDto;
+import com.example.haedal.repository.FollowRepository;
 import com.example.haedal.repository.PostRepository;
 import com.example.haedal.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,10 @@ public class UserService {
     private final UserRepository userRepository;
     private final ImageService imageService;
     private final PostRepository postRepository;
+    private final FollowRepository followRepository;
     @Autowired
-    public UserService(UserRepository userRepository, ImageService imageService, PostRepository postRepository){
+    public UserService(UserRepository userRepository, ImageService imageService, PostRepository postRepository,FollowRepository followRepository){
+        this.followRepository=followRepository;
         this.userRepository=userRepository;
         this.imageService = imageService;
         this.postRepository=postRepository;
@@ -36,13 +39,13 @@ public class UserService {
     }
         public UserSimpleResponseDto convertUserToSimpleDto(User currentUser, User targetUser) {
             String imageUrl = targetUser.getImageUrl();
-            String imageData = imageService.encodeImageToBase64(System.getProperty("user.dir") + "/haedal/src/main/resources/static/" + imageUrl);
+            String imageData = imageService.encodeImageToBase64(System.getProperty("user.dir") + "/khaedal/src/main/resources/static/" + imageUrl);
         return new UserSimpleResponseDto(
                     targetUser.getId(),
                     targetUser.getUsername(),
                     targetUser.getName(),
                     imageData,
-                    false
+                    followRepository.existsByFollowerAndFollowing(currentUser, targetUser)
             );
     }
     public List<UserSimpleResponseDto> getAllUsers(User currentUser) {
@@ -96,12 +99,12 @@ public class UserService {
                 targetUser.getUsername(),
                 targetUser.getName(),
                 imageData,
-                false,
+                followRepository.existsByFollowerAndFollowing(currentUser, targetUser),
                 targetUser.getBio(),
                 targetUser.getJoinedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm")),
                 postRepository.countByUser(targetUser),
-                0L,
-                0L
+                followRepository.countByFollowing(targetUser),
+                followRepository.countByFollower(targetUser)
         );
     }
 }
